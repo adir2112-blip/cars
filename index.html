@@ -1485,15 +1485,19 @@ async function sendWaNow(){
   for(const cb of selected){
     try{
       const r=await fetch(WA_BOT+'/api/send',{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({to:cb.value,message:msg})
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({phone:cb.value, message:msg})
       });
-      if(r.ok)sent++;else failed++;
+      const d=await r.json().catch(()=>({}));
+      if(r.ok && d.success) sent++; else failed++;
     }catch(e){failed++;}
   }
   resEl.innerHTML=failed===0
-    ?`<div class="wa-ok wa-result">✅ נשלח ל-${sent} אנשי קשר!</div>`
-    :`<div class="wa-err wa-result">⚠️ נשלח ל-${sent}, נכשל ל-${failed}</div>`;
+    ?`<div class="wa-ok wa-result">✅ נשלח בהצלחה ל-${sent} אנשי קשר!</div>`
+    :sent>0
+      ?`<div class="wa-err wa-result">⚠️ נשלח ל-${sent}, נכשל ל-${failed}</div>`
+      :`<div class="wa-err wa-result">❌ שליחה נכשלה — בדוק שהבוט מחובר ל-WhatsApp</div>`;
 }
 
 function buildSchedulePreview(){
@@ -1522,63 +1526,86 @@ function buildSchedulePreview(){
 
 async function createAutoSchedules(){
   const contacts=getWaContacts();
-  if(!contacts.length){document.getElementById('wa-auto-result').innerHTML='<div class="wa-err wa-result">הוסף אנשי קשר תחילה</div>';return;}
+  if(!contacts.length){document.getElementById('wa-auto-result').innerHTML='<div class="wa-err wa-result">הוסף אנשי קשר תחילה בלשונית "אנשי קשר"</div>';return;}
   const daysBefore=parseInt(document.querySelector('input[name="wa-days-before"]:checked')?.value||7);
   const sendTime=document.getElementById('wa-send-time').value||'09:00';
   const [hour,minute]=sendTime.split(':').map(Number);
   const resEl=document.getElementById('wa-auto-result');
-  resEl.innerHTML='<div class="wa-ok wa-result">⏳ יוצר תיזמונים...</div>';
-  let created=0,failed=0;
-  const recipients=contacts.map(c=>c.number);
+  resEl.innerHTML='<div class="wa-ok wa-result">⏳ טוען נתונים מהבוט...</div>';
+  const phones=contacts.map(c=>c.number);
+
+  // Load existing data from bot
+  let botData={contacts:[],schedules:[]};
+  try{
+    const r=await fetch(WA_BOT+'/api/data');
+    if(r.ok) botData=await r.json();
+  }catch(e){
+    resEl.innerHTML='<div class="wa-err wa-result">❌ לא ניתן להתחבר לבוט. ודא שהוא פעיל.</div>';
+    return;
+  }
+
+  let created=0;
+  const newSchedules=[...botData.schedules];
 
   for(const car of state.cars){
-    // Maintenance
+    // Maintenance reminders
     for(const e of car.entries.filter(ev=>ev.next)){
       const d=new Date(e.next);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
       const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
       const msg=`🔧 *תזכורת תחזוקה — ${car.name}*\n\nמועד טיפול: ${e.next}\nסוג: ${lbl}${car.plate?'\nלוחית: '+car.plate:''}\n\n_נשלח אוטומטית מ-AutoCare_`;
-      try{
-        const r=await fetch(WA_BOT+'/api/schedules',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            name:`AutoCare: ${car.name} — ${lbl}`,
-            message:msg,
-            recipients,
-            type:'specific',
-            date:`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`,
-            hour,minute,
-            repeat:'yearly'
-          })
-        });
-        if(r.ok)created++;else failed++;
-      }catch(ex){failed++;}
+      const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
+      newSchedules.push({
+        id:'ac_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+        name:`AutoCare: ${car.name} — ${lbl}`,
+        message:msg,
+        phones,
+        specificDate:dateStr,
+        hour,minute,
+        yearly:true,
+        active:true,
+        lastWorkDay:false
+      });
+      created++;
     }
-    // Test
+    // Test reminder
     if(car.testDate){
       const d=new Date(car.testDate);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
       const msg=`🔍 *תזכורת טסט שנתי — ${car.name}*\n\nתאריך טסט: ${car.testDate}${car.plate?'\nלוחית: '+car.plate:''}\n\nזכור לקבוע תור לטסט!\n\n_נשלח אוטומטית מ-AutoCare_`;
-      try{
-        const r=await fetch(WA_BOT+'/api/schedules',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({
-            name:`AutoCare: ${car.name} — טסט שנתי`,
-            message:msg,
-            recipients,
-            type:'specific',
-            date:`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`,
-            hour,minute,
-            repeat:'yearly'
-          })
-        });
-        if(r.ok)created++;else failed++;
-      }catch(ex){failed++;}
+      const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
+      newSchedules.push({
+        id:'ac_test_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+        name:`AutoCare: ${car.name} — טסט שנתי`,
+        message:msg,
+        phones,
+        specificDate:dateStr,
+        hour,minute,
+        yearly:true,
+        active:true,
+        lastWorkDay:false
+      });
+      created++;
     }
   }
-  resEl.innerHTML=failed===0
-    ?`<div class="wa-ok wa-result">✅ נוצרו ${created} תיזמונים בבוט! ישלחו אוטומטית כל שנה.</div>`
-    :`<div class="wa-err wa-result">⚠️ נוצרו ${created}, נכשלו ${failed}. ודא שהבוט פעיל.</div>`;
+
+  if(!created){resEl.innerHTML='<div class="wa-err wa-result">אין טיפולים עם תאריך הבא או תאריך טסט</div>';return;}
+
+  // Save back to bot
+  try{
+    const r=await fetch(WA_BOT+'/api/data',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contacts:botData.contacts, schedules:newSchedules})
+    });
+    if(r.ok){
+      resEl.innerHTML=`<div class="wa-ok wa-result">✅ נוצרו ${created} תיזמונים בבוט! ישלחו אוטומטית כל שנה ${daysBefore} ימים לפני כל טיפול וטסט.</div>`;
+    } else {
+      resEl.innerHTML='<div class="wa-err wa-result">❌ שגיאה בשמירה לבוט</div>';
+    }
+  }catch(e){
+    resEl.innerHTML='<div class="wa-err wa-result">❌ שגיאת רשת — ודא שהבוט פעיל</div>';
+  }
 }
 
 document.querySelectorAll('input[name="wa-days-before"]').forEach(r=>{
