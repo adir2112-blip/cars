@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoCare — תחזוקת רכבים</title>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#faf8f4;--white:#fff;--w50:#f5f2ed;--w100:#ebe6dc;--w200:#d6cfc0;--w300:#bfb49f;
+  --ink:#1c1917;--ink2:#44403c;--ink3:#78716c;--ink4:#a8a29e;--ink5:#d6d3d1;
+  --blue:#1d4ed8;--blue-lt:#eff6ff;--blue-md:#bfdbfe;
+  --green:#15803d;--green-lt:#f0fdf4;--green-md:#bbf7d0;
+  --amber:#b45309;--amber-lt:#fffbeb;--amber-md:#fde68a;
+  --red:#b91c1c;--red-lt:#fef2f2;--red-md:#fecaca;
+  --purple:#6d28d9;--purple-lt:#f5f3ff;--purple-md:#ddd6fe;
+  --r4:4px;--r8:8px;--r12:12px;--r16:16px;--r24:24px;
+  --ss:0 1px 3px rgba(28,25,23,.07),0 1px 2px rgba(28,25,23,.05);
+  --sm:0 4px 16px rgba(28,25,23,.08),0 2px 6px rgba(28,25,23,.05);
+  --sl:0 12px 40px rgba(28,25,23,.12),0 4px 12px rgba(28,25,23,.07);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Rubik',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;font-size:14px;line-height:1.6}
+::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--w200);border-radius:10px}
+
+/* ── HEADER ── */
+.site-header{background:var(--white);border-bottom:1px solid var(--w100);box-shadow:var(--ss);position:sticky;top:0;z-index:50;animation:slideDown .4s ease}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
+.header-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:40px;height:40px;background:var(--ink);border-radius:var(--r8);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.brand-name{font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink);letter-spacing:-.3px;line-height:1.2}
+.brand-sub{font-size:11px;color:var(--ink4)}
+.header-actions{display:flex;gap:8px}
+
+/* ── LAYOUT ── */
+.app{max-width:1200px;margin:0 auto;padding:32px 24px 60px;animation:fadeUp .5s ease .1s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TABS ── */
+.tabs-row{display:flex;align-items:center;gap:6px;margin-bottom:28px;flex-wrap:wrap}
+.tab{padding:9px 20px;border-radius:100px;border:1.5px solid var(--w100);font-size:13px;font-weight:500;cursor:pointer;background:var(--white);color:var(--ink3);font-family:'Rubik',sans-serif;transition:all .2s;box-shadow:var(--ss);display:flex;align-items:center;gap:7px}
+.tab:hover{border-color:var(--w200);color:var(--ink2);transform:translateY(-1px);box-shadow:var(--sm)}
+.tab.active{background:var(--ink);border-color:var(--ink);color:var(--white);box-shadow:0 4px 14px rgba(28,25,23,.22)}
+.tab.add-tab{border-style:dashed;border-color:var(--w200);color:var(--ink4);background:transparent;box-shadow:none}
+.tab.add-tab:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);transform:none;box-shadow:none}
+.tab-dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.5}
+.tab.active .tab-dot{background:#4ade80;opacity:1}
+
+/* ── CAR SECTION ── */
+.car-section{display:none}.car-section.active{display:block}
+
+/* ── CAR HERO ── */
+.car-hero{background:var(--white);border:1px solid var(--w100);border-radius:var(--r24);padding:28px 32px;display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px;box-shadow:var(--ss);flex-wrap:wrap}
+.car-identity{display:flex;align-items:center;gap:20px}
+.car-emblem{width:64px;height:64px;border-radius:var(--r16);background:linear-gradient(135deg,var(--w50),var(--w100));border:1.5px solid var(--w200);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0}
+.car-info h2{font-size:22px;font-weight:600;letter-spacing:-.4px;line-height:1.2}
+.car-meta-line{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
+.meta-pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;background:var(--w50);border:1px solid var(--w100);font-size:12px;color:var(--ink3)}
+
+/* ── SUMMARY CARDS ── */
+.summary-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.s-card{background:var(--white);border:1px solid var(--w100);border-radius:var(--r16);padding:20px 22px;box-shadow:var(--ss);transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.s-card:hover{transform:translateY(-2px);box-shadow:var(--sm)}
+.s-card::after{content:'';position:absolute;bottom:-16px;right:-16px;width:64px;height:64px;border-radius:50%;opacity:.06}
+.v-all::after{background:var(--ink)}.v-done::after{background:var(--green)}.v-plan::after{background:var(--amber)}.v-last::after{background:var(--blue)}
+.s-icon{width:34px;height:34px;border-radius:var(--r8);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px}
+.v-all .s-icon{background:var(--w50)}.v-done .s-icon{background:var(--green-lt)}.v-plan .s-icon{background:var(--amber-lt)}.v-last .s-icon{background:var(--blue-lt)}
+.s-val{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1}.s-lbl{font-size:12px;color:var(--ink4);margin-top:4px}
+
+/* ── ALERTS ── */
+.alerts-box{margin-bottom:20px;display:flex;flex-direction:column;gap:8px}
+.alert-item{display:flex;align-items:center;gap:12px;padding:12px 18px;border-radius:var(--r12);font-size:13px;border:1px solid}
+.alert-item.urgent{background:var(--red-lt);border-color:var(--red-md);color:var(--red)}
+.alert-item.warning{background:var(--amber-lt);border-color:var(--amber-md);color:var(--amber)}
+.alert-item.info{background:var(--blue-lt);border-color:var(--blue-md);color:var(--blue)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:100px;border:1.5px solid var(--w100);font-size:13px;font-weight:500;cursor:pointer;background:var(--white);color:var(--ink2);font-family:'Rubik',sans-serif;transition:all .2s;box-shadow:var(--ss);white-space:nowrap}
+.btn:hover{border-color:var(--w200);transform:translateY(-1px);box-shadow:var(--sm)}
+.btn:active{transform:translateY(0)}
+.btn-primary{background:var(--ink);border-color:var(--ink);color:var(--white);box-shadow:0 4px 14px rgba(28,25,23,.18)}
+.btn-primary:hover{background:var(--ink2);border-color:var(--ink2)}
+.btn-green{background:var(--green-lt);border-color:var(--green-md);color:var(--green);box-shadow:none}
+.btn-green:hover{background:#dcfce7;border-color:#86efac}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-ghost{background:transparent;border-color:transparent;box-shadow:none;color:var(--ink3);padding:6px 10px}
+.btn-ghost:hover{background:var(--w50);border-color:var(--w100);transform:none;box-shadow:none}
+.btn-danger{color:var(--red);border-color:transparent;background:transparent;box-shadow:none}
+.btn-danger:hover{background:var(--red-lt);border-color:var(--red-md);transform:none;box-shadow:none}
+
+/* ── TOOLBAR ── */
+.toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:260px}
+.search-wrap input{width:100%;padding:9px 36px 9px 14px;border-radius:100px;border:1.5px solid var(--w100);background:var(--white);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;box-shadow:var(--ss);transition:border-color .2s;outline:none}
+.search-wrap input:focus{border-color:var(--ink)}
+.search-ico{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;opacity:.5}
+.filter-sel{padding:8px 14px;border-radius:100px;border:1.5px solid var(--w100);background:var(--white);color:var(--ink2);font-size:13px;font-family:'Rubik',sans-serif;outline:none;cursor:pointer;box-shadow:var(--ss);transition:border-color .2s}
+.filter-sel:hover,.filter-sel:focus{border-color:var(--w200)}
+
+/* ── TABLE ── */
+.table-card{background:var(--white);border:1px solid var(--w100);border-radius:var(--r16);overflow:hidden;box-shadow:var(--ss)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+thead th{padding:12px 14px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink4);background:var(--w50);border-bottom:1px solid var(--w100);white-space:nowrap}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--w50);vertical-align:top;font-size:13px}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background .15s}
+tbody tr:hover td{background:var(--w50)}
+.empty-td{padding:56px;text-align:center;color:var(--ink4)}
+.empty-ico{font-size:32px;margin-bottom:10px;opacity:.4}
+
+/* ── PARTS CHIPS in table ── */
+.parts-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.part-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:600;background:var(--purple-lt);color:var(--purple);border:1px solid var(--purple-md);white-space:nowrap}
+.part-chip-sm{background:var(--w50);color:var(--ink3);border-color:var(--w100)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid}
+.b-oil{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.b-brake{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.b-fluid{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.b-filter{background:#f0fdf4;color:#14532d;border-color:#bbf7d0}
+.b-timing{background:#fdf4ff;color:#6b21a8;border-color:#e9d5ff}
+.b-spark{background:#fff7ed;color:#9a3412;border-color:#fed7aa}
+.b-other{background:var(--w50);color:var(--ink3);border-color:var(--w100)}
+.status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;border:1px solid;white-space:nowrap}
+.st-done{background:var(--green-lt);color:var(--green);border-color:var(--green-md)}
+.st-planned{background:var(--amber-lt);color:var(--amber);border-color:var(--amber-md)}
+.st-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.note-sm{font-size:11px;color:var(--ink4);display:block;margin-top:2px}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(28,25,23,.4);backdrop-filter:blur(6px);z-index:300;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--white);border:1px solid var(--w100);border-radius:var(--r24);padding:32px;width:600px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--sl);animation:mIn .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mIn{from{opacity:0;transform:scale(.94) translateY(12px)}to{opacity:1;transform:none}}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.modal-hdr h3{font-size:18px;font-weight:600;letter-spacing:-.3px}
+.modal-x{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--w100);background:var(--white);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;color:var(--ink3);transition:all .15s;font-family:'Rubik',sans-serif}
+.modal-x:hover{background:var(--w50);color:var(--ink)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.fg{display:flex;flex-direction:column;gap:7px}.fg.full{grid-column:1/-1}
+.fg label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--ink3)}
+.fg input,.fg select,.fg textarea{padding:10px 14px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--w50);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none;transition:border-color .2s,background .2s}
+.fg input:hover,.fg select:hover,.fg textarea:hover{border-color:var(--w200)}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--ink);background:var(--white)}
+.fg textarea{min-height:72px;resize:vertical}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid var(--w100)}
+.sec-lbl{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--ink4);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--w100)}
+
+/* ── PARTS CHECKLIST (in modal) ── */
+.parts-section{margin-top:4px}
+.parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-bottom:12px}
+.part-cb-row{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--w50);cursor:pointer;transition:all .15s;user-select:none}
+.part-cb-row:hover{border-color:var(--purple-md);background:var(--purple-lt)}
+.part-cb-row.checked{border-color:var(--purple);background:var(--purple-lt)}
+.part-cb-row input[type=checkbox]{width:15px;height:15px;accent-color:var(--purple);cursor:pointer;flex-shrink:0}
+.part-cb-label{font-size:13px;color:var(--ink2);font-weight:400;flex:1;line-height:1.3}
+.part-cb-row.checked .part-cb-label{color:var(--purple);font-weight:500}
+
+.add-part-row{display:flex;gap:8px;margin-top:4px}
+.add-part-row input{flex:1;padding:8px 12px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--w50);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none;transition:border-color .2s}
+.add-part-row input:focus{border-color:var(--purple);background:var(--white)}
+.btn-purple{background:var(--purple-lt);border-color:var(--purple-md);color:var(--purple);box-shadow:none;padding:8px 14px;font-size:12px}
+.btn-purple:hover{background:var(--purple-md);border-color:var(--purple);transform:none;box-shadow:none}
+
+/* ── CAT CHIPS ── */
+.cat-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cat-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:100px;background:var(--w50);border:1.5px solid var(--w100);font-size:12px;color:var(--ink2);font-weight:500}
+.cat-rm{width:18px;height:18px;border-radius:50%;background:none;border:none;cursor:pointer;color:var(--ink4);font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;font-family:'Rubik',sans-serif}
+.cat-rm:hover{color:var(--red);background:var(--red-lt)}
+
+/* ── REMINDERS ── */
+.reminder-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--w50);gap:12px}
+.reminder-row:last-child{border-bottom:none}
+.r-car{font-size:12px;color:var(--ink4);margin-bottom:2px}
+.r-name{font-size:14px;font-weight:500}
+.r-desc{font-size:12px;color:var(--ink3);margin-top:1px}
+.r-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.r-date{font-size:12px;color:var(--ink4)}
+.days-pill{padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;border:1px solid;white-space:nowrap}
+.dp-urgent{background:var(--red-lt);color:var(--red);border-color:var(--red-md)}
+.dp-warning{background:var(--amber-lt);color:var(--amber);border-color:var(--amber-md)}
+.dp-ok{background:var(--green-lt);color:var(--green);border-color:var(--green-md)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:var(--white);padding:12px 22px;border-radius:100px;font-size:13px;font-weight:500;z-index:999;box-shadow:var(--sl);transition:transform .35s cubic-bezier(.34,1.56,.64,1);pointer-events:none;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:640px){
+  .app{padding:20px 16px 50px}.header-inner{padding:0 16px}
+  .car-hero{padding:20px;flex-direction:column}
+  .form-grid{grid-template-columns:1fr}.fg.full{grid-column:1}
+  .modal{padding:24px}.summary-row{grid-template-columns:1fr 1fr}
+  .parts-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-icon">🔧</div>
+      <div>
+        <div class="brand-name">AutoCare</div>
+        <div class="brand-sub">מערכת תחזוקת רכבים</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-green btn-sm" onclick="openReminders()">📅 תזכורות</button>
+      <button class="btn btn-sm" onclick="exportCSV()">⬇ Excel</button>
+    </div>
+  </div>
+</header>
+
+<main class="app">
+  <div class="tabs-row" id="carTabs"></div>
+  <div id="carsContainer"></div>
+</main>
+
+<!-- ══ MODAL: Add/Edit Entry ══ -->
+<div class="modal-bg" id="modal-entry">
+  <div class="modal" style="width:640px">
+    <div class="modal-hdr">
+      <h3 id="me-title">הוסף טיפול</h3>
+      <button class="modal-x" onclick="closeModal('modal-entry')">✕</button>
+    </div>
+
+    <div class="form-grid" style="margin-bottom:20px">
+      <div class="fg"><label>תאריך טיפול</label><input type="date" id="e-date"></div>
+      <div class="fg"><label>סטטוס</label>
+        <select id="e-status">
+          <option value="done">✅ בוצע</option>
+          <option value="planned">🕐 מתוכנן</option>
+        </select>
+      </div>
+      <div class="fg full"><label>תיאור כללי (אופציונלי)</label><input type="text" id="e-desc" placeholder="לדוגמה: טיפול תקופתי 40,000 ק&quot;מ"></div>
+      <div class="fg"><label>קילומטראז'</label><input type="number" id="e-km" placeholder="145000"></div>
+      <div class="fg"><label>עלות כוללת ₪</label><input type="number" id="e-cost" placeholder="650"></div>
+      <div class="fg"><label>תאריך טיפול הבא</label><input type="date" id="e-next"></div>
+      <div class="fg"><label>מוסך / ספק</label><input type="text" id="e-garage" placeholder="מוסך רמי, דלק פלוס..."></div>
+      <div class="fg full"><label>הערות</label><textarea id="e-notes" placeholder="הערות נוספות, מספר חלק, ערבויות..."></textarea></div>
+    </div>
+
+    <!-- PARTS CHECKLIST -->
+    <div class="fg full parts-section">
+      <div class="sec-lbl">🔩 רכיבים שהוחלפו — סמן את כל מה שטופל</div>
+      <div class="parts-grid" id="parts-checklist"></div>
+      <div class="add-part-row">
+        <input type="text" id="new-part-inp" placeholder="הוסף רכיב חדש... (לדוגמה: שמן גיר)" onkeydown="if(event.key==='Enter')addPartInline()">
+        <button class="btn btn-purple" onclick="addPartInline()">＋ הוסף רכיב</button>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-entry')">ביטול</button>
+      <button class="btn btn-primary" onclick="saveEntry()">💾 שמור טיפול</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Car Edit ══ -->
+<div class="modal-bg" id="modal-car">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3>🚗 פרטי הרכב</h3>
+      <button class="modal-x" onclick="closeModal('modal-car')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="fg full"><label>שם / כינוי הרכב</label><input type="text" id="ce-name" placeholder="טויוטה שלי, הרכב של אבא..."></div>
+      <div class="fg"><label>יצרן ודגם</label><input type="text" id="ce-model" placeholder="Toyota Corolla"></div>
+      <div class="fg"><label>שנת ייצור</label><input type="number" id="ce-year" placeholder="2018" min="1970" max="2030"></div>
+      <div class="fg"><label>לוחית רישוי</label><input type="text" id="ce-plate" placeholder="12-345-67"></div>
+      <div class="fg"><label>סוג דלק / מנוע</label><input type="text" id="ce-engine" placeholder="2.0 בנזין / היברידי"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-car')">ביטול</button>
+      <button class="btn btn-primary" onclick="saveCarEdit()">💾 שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Parts Manager ══ -->
+<div class="modal-bg" id="modal-parts">
+  <div class="modal" style="width:500px">
+    <div class="modal-hdr">
+      <h3>🔩 ניהול רכיבים</h3>
+      <button class="modal-x" onclick="closeModal('modal-parts')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--ink4);margin-bottom:18px">רכיבים אלו יופיעו כצ'קבוקסים בכל טיפול. ניתן להוסיף ולמחוק בחופשיות.</p>
+    <div class="fg" style="margin-bottom:18px">
+      <label>הוסף רכיב חדש</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input type="text" id="pm-inp" placeholder="לדוגמה: שמן גיר, מצבר, מסנן דלק..." style="flex:1;padding:10px 14px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--w50);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none" onkeydown="if(event.key==='Enter')addPartFromManager()">
+        <button class="btn btn-primary" onclick="addPartFromManager()">הוסף</button>
+      </div>
+    </div>
+    <div class="sec-lbl">רכיבים קיימים</div>
+    <div id="parts-manager-list"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('modal-parts')">סגור</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Reminders ══ -->
+<div class="modal-bg" id="modal-reminders">
+  <div class="modal" style="width:580px">
+    <div class="modal-hdr">
+      <h3>📅 תזכורות טיפולים</h3>
+      <button class="modal-x" onclick="closeModal('modal-reminders')">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--ink4);margin-bottom:20px">כל הטיפולים הקרובים — מסודרים לפי דחיפות.</p>
+    <div id="reminders-content"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('modal-reminders')">סגור</button>
+      <button class="btn btn-primary" onclick="copyReminders()">📋 העתק לבוט</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK = 'autocare_v4';
+
+const DEFAULT_PARTS = [
+  'שמן מנוע','פילטר שמן','פילטר אוויר','פלאגים',
+  'ברקסים קדמיים','ברקסים אחוריים','צלחות קדמיות','צלחות אחוריות',
+  'נוזל בלמים','נוזל קירור','רצועת טיימינג','שרשרת תזמון',
+  'פילטר מזגן','מגבים','סוללה / מצבר','גלגל עזר'
+];
+
+let state = {
+  cars:[{id:1,name:'רכב 1',model:'',year:'',plate:'',engine:'',
+    parts:[...DEFAULT_PARTS],entries:[]}],
+  activeCar:0
+};
+
+function save(){try{localStorage.setItem(SK,JSON.stringify(state))}catch(e){}}
+function load(){try{const r=localStorage.getItem(SK);if(r)state=JSON.parse(r)}catch(e){}}
+function getCar(id){return state.cars.find(c=>c.id===id)}
+
+function init(){
+  load();
+  rebuildTabs();
+  state.cars.forEach(c=>ensureDOM(c.id));
+  activateCar(state.cars[state.activeCar]?.id||state.cars[0].id);
+}
+
+/* ── TABS ── */
+function rebuildTabs(){
+  const row=document.getElementById('carTabs');
+  row.innerHTML='';
+  state.cars.forEach((car,i)=>{
+    const b=document.createElement('button');
+    b.className='tab'+(i===state.activeCar?' active':'');
+    b.innerHTML=`<span class="tab-dot"></span>${car.name}`;
+    b.onclick=()=>switchCar(i);
+    row.appendChild(b);
+  });
+  if(state.cars.length<5){
+    const a=document.createElement('button');
+    a.className='tab add-tab';a.textContent='+ הוסף רכב';a.onclick=addCar;
+    row.appendChild(a);
+  }
+}
+
+function switchCar(idx){
+  state.activeCar=idx;
+  document.querySelectorAll('.tab:not(.add-tab)').forEach((t,i)=>t.classList.toggle('active',i===idx));
+  document.querySelectorAll('.car-section').forEach(s=>s.classList.remove('active'));
+  const car=state.cars[idx];
+  ensureDOM(car.id);
+  activateCar(car.id);
+  save();
+}
+
+function activateCar(id){
+  const el=document.getElementById('car-'+id);
+  if(el){el.classList.add('active');renderAll(id);}
+}
+
+function addCar(){
+  if(state.cars.length>=5)return;
+  const id=Date.now();
+  state.cars.push({id,name:'רכב '+(state.cars.length+1),model:'',year:'',plate:'',engine:'',
+    parts:[...DEFAULT_PARTS],entries:[]});
+  rebuildTabs();ensureDOM(id);switchCar(state.cars.length-1);
+}
+
+/* ── DOM PER CAR ── */
+function ensureDOM(carId){
+  if(document.getElementById('car-'+carId))return;
+  const car=getCar(carId);
+  const div=document.createElement('div');
+  div.className='car-section';div.id='car-'+carId;
+  div.innerHTML=`
+    <div class="car-hero">
+      <div class="car-identity">
+        <div class="car-emblem">🚗</div>
+        <div class="car-info">
+          <h2 id="cn-${carId}">${car.name}</h2>
+          <div class="car-meta-line" id="cm-${carId}"><span class="meta-pill">לחץ "ערוך פרטים" להוסיף מידע</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="openPartsManager(${carId})">🔩 ניהול רכיבים</button>
+        <button class="btn btn-sm" onclick="openCarEdit(${carId})">✏️ ערוך פרטים</button>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="s-card v-all"><div class="s-icon">📋</div><div class="s-val" id="sc-t-${carId}">0</div><div class="s-lbl">סה"כ טיפולים</div></div>
+      <div class="s-card v-done"><div class="s-icon">✅</div><div class="s-val" id="sc-d-${carId}">0</div><div class="s-lbl">בוצעו</div></div>
+      <div class="s-card v-plan"><div class="s-icon">⏳</div><div class="s-val" id="sc-p-${carId}">0</div><div class="s-lbl">מתוכננים</div></div>
+      <div class="s-card v-last"><div class="s-icon">📅</div><div class="s-val" id="sc-l-${carId}" style="font-size:15px;letter-spacing:0">—</div><div class="s-lbl">טיפול אחרון</div></div>
+    </div>
+
+    <div id="alerts-${carId}" class="alerts-box"></div>
+
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openAddEntry(${carId})">＋ הוסף טיפול</button>
+      <div class="search-wrap">
+        <span class="search-ico">🔍</span>
+        <input type="text" id="fq-${carId}" placeholder="חיפוש..." oninput="renderTable(${carId})">
+      </div>
+      <select class="filter-sel" id="fs-${carId}" onchange="renderTable(${carId})">
+        <option value="">כל הסטטוסים</option>
+        <option value="done">בוצע</option>
+        <option value="planned">מתוכנן</option>
+      </select>
+      <select class="filter-sel" id="fp-${carId}" onchange="renderTable(${carId})">
+        <option value="">כל הרכיבים</option>
+      </select>
+    </div>
+
+    <div class="table-card">
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:100px">תאריך</th>
+            <th style="min-width:200px">רכיבים שהוחלפו</th>
+            <th style="min-width:160px">תיאור / הערות</th>
+            <th style="width:80px">ק"מ</th>
+            <th style="width:75px">עלות</th>
+            <th style="width:80px">סטטוס</th>
+            <th style="width:95px">טיפול הבא</th>
+            <th style="width:70px">פעולות</th>
+          </tr></thead>
+          <tbody id="tb-${carId}"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="height:24px"></div>`;
+  document.getElementById('carsContainer').appendChild(div);
+  refreshPartsFilter(carId);
+  updateCarMeta(carId);
+}
+
+/* ── RENDER ── */
+function renderAll(id){renderSummary(id);renderAlerts(id);renderTable(id);}
+
+function renderSummary(id){
+  const e=getCar(id).entries;
+  document.getElementById('sc-t-'+id).textContent=e.length;
+  document.getElementById('sc-d-'+id).textContent=e.filter(x=>x.status==='done').length;
+  document.getElementById('sc-p-'+id).textContent=e.filter(x=>x.status==='planned').length;
+  const last=e.filter(x=>x.date&&x.status==='done').sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('sc-l-'+id).textContent=last.length?last[0].date:'—';
+}
+
+function renderAlerts(id){
+  const car=getCar(id);
+  const today=new Date();today.setHours(0,0,0,0);
+  const alerts=[];
+  car.entries.forEach(e=>{
+    if(!e.next)return;
+    const d=new Date(e.next);d.setHours(0,0,0,0);
+    const days=Math.round((d-today)/86400000);
+    const label=e.parts&&e.parts.length?e.parts.slice(0,2).join(', ')+(e.parts.length>2?'...':''):(e.desc||'טיפול');
+    if(days<0) alerts.push({type:'urgent',icon:'🚨',msg:`${label} — עבר מועד הטיפול לפני ${Math.abs(days)} ימים (${e.next})`,days});
+    else if(days<=14) alerts.push({type:'warning',icon:'⚠️',msg:`${label} — מועד הטיפול בעוד ${days} ימים (${e.next})`,days});
+    else if(days<=30) alerts.push({type:'info',icon:'💡',msg:`${label} — מועד הטיפול בעוד ${days} ימים (${e.next})`,days});
+  });
+  alerts.sort((a,b)=>a.days-b.days);
+  document.getElementById('alerts-'+id).innerHTML=alerts.map(a=>
+    `<div class="alert-item ${a.type}"><span style="font-size:15px;flex-shrink:0">${a.icon}</span><span>${a.msg}</span></div>`).join('');
+}
+
+function renderTable(carId){
+  const car=getCar(carId);
+  const staF=document.getElementById('fs-'+carId)?.value||'';
+  const partF=document.getElementById('fp-'+carId)?.value||'';
+  const query=(document.getElementById('fq-'+carId)?.value||'').toLowerCase();
+  let rows=car.entries.map((e,i)=>({...e,_i:i}));
+  if(staF) rows=rows.filter(r=>r.status===staF);
+  if(partF) rows=rows.filter(r=>r.parts&&r.parts.includes(partF));
+  if(query) rows=rows.filter(r=>(r.desc+r.notes+r.garage+(r.parts||[]).join(' ')).toLowerCase().includes(query));
+  const tbody=document.getElementById('tb-'+carId);
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="8" class="empty-td"><div class="empty-ico">🔧</div>אין רשומות — לחץ "＋ הוסף טיפול"</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=rows.map(e=>{
+    const partsHtml=e.parts&&e.parts.length
+      ?`<div class="parts-list">${e.parts.map(p=>`<span class="part-chip">✓ ${p}</span>`).join('')}</div>`
+      :`<span style="color:var(--ink5);font-size:12px">לא צוינו רכיבים</span>`;
+    const stHtml=e.status==='done'
+      ?`<span class="status-badge st-done"><span class="st-dot"></span>בוצע</span>`
+      :`<span class="status-badge st-planned"><span class="st-dot"></span>מתוכנן</span>`;
+    const descPart=e.desc?`<span style="font-size:13px;color:var(--ink2)">${e.desc}</span><br>`:'';
+    const garagePart=e.garage?`<span class="note-sm">🏠 ${e.garage}</span>`:'';
+    const notesPart=e.notes?`<span class="note-sm">📝 ${e.notes}</span>`:'';
+    const nextHtml=e.next?`<span style="font-size:12px;color:var(--ink3)">${e.next}</span>`:`<span style="color:var(--ink5)">—</span>`;
+    return `<tr>
+      <td style="font-size:12px;white-space:nowrap;color:var(--ink2);vertical-align:top">${e.date||'—'}</td>
+      <td style="vertical-align:top">${partsHtml}</td>
+      <td style="vertical-align:top">${descPart}${garagePart}${notesPart}</td>
+      <td style="font-size:12px;color:var(--ink3);vertical-align:top">${e.km?Number(e.km).toLocaleString():'—'}</td>
+      <td style="font-size:12px;color:var(--ink2);font-weight:500;vertical-align:top">${e.cost?Number(e.cost).toLocaleString()+' ₪':'—'}</td>
+      <td style="vertical-align:top">${stHtml}</td>
+      <td style="vertical-align:top">${nextHtml}</td>
+      <td style="white-space:nowrap;vertical-align:top">
+        <button class="btn btn-ghost btn-sm" onclick="openEditEntry(${carId},${e._i})" title="ערוך">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="delEntry(${carId},${e._i})" title="מחק">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+  refreshPartsFilter(carId);
+}
+
+function refreshPartsFilter(carId){
+  const car=getCar(carId);
+  const sel=document.getElementById('fp-'+carId);
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">כל הרכיבים</option>'+
+    car.parts.map(p=>`<option value="${p}"${p===cur?' selected':''}>${p}</option>`).join('');
+}
+
+function updateCarMeta(carId){
+  const car=getCar(carId);
+  const n=document.getElementById('cn-'+carId);
+  const m=document.getElementById('cm-'+carId);
+  if(!n)return;
+  n.textContent=car.name;
+  const pills=[];
+  if(car.model) pills.push(`<span class="meta-pill">🚗 ${car.model}${car.year?' '+car.year:''}</span>`);
+  if(car.plate) pills.push(`<span class="meta-pill">🔖 ${car.plate}</span>`);
+  if(car.engine) pills.push(`<span class="meta-pill">⚙️ ${car.engine}</span>`);
+  m.innerHTML=pills.length?pills.join(''):`<span class="meta-pill" style="color:var(--ink5)">לחץ "ערוך פרטים" להוסיף מידע</span>`;
+}
+
+/* ── PARTS CHECKLIST (modal) ── */
+let _modalCarId=null;
+
+function buildChecklist(carId,checkedParts){
+  const car=getCar(carId);
+  const cont=document.getElementById('parts-checklist');
+  cont.innerHTML=car.parts.map(p=>{
+    const isChecked=checkedParts&&checkedParts.includes(p);
+    const id='cb-'+p.replace(/\s/g,'_');
+    return `<label class="part-cb-row${isChecked?' checked':''}" id="row-${id}">
+      <input type="checkbox" id="${id}" value="${p}" ${isChecked?'checked':''} onchange="toggleRow('${id}')">
+      <span class="part-cb-label">${p}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleRow(id){
+  const cb=document.getElementById(id);
+  const row=document.getElementById('row-'+id);
+  row.classList.toggle('checked',cb.checked);
+}
+
+function getCheckedParts(){
+  return [...document.querySelectorAll('#parts-checklist input[type=checkbox]:checked')].map(c=>c.value);
+}
+
+function addPartInline(){
+  const inp=document.getElementById('new-part-inp');
+  const label=inp.value.trim();
+  if(!label)return;
+  const car=getCar(_modalCarId);
+  if(!car.parts.includes(label)){
+    car.parts.push(label);
+    save();
+    refreshPartsFilter(_modalCarId);
+  }
+  // Rebuild checklist with new part checked
+  const already=getCheckedParts();
+  already.push(label);
+  buildChecklist(_modalCarId,already);
+  inp.value='';
+}
+
+/* ── PARTS MANAGER ── */
+let _pmCarId=null;
+function openPartsManager(carId){
+  _pmCarId=carId;
+  renderPartsManager(carId);
+  document.getElementById('modal-parts').classList.add('open');
+}
+
+function renderPartsManager(carId){
+  const car=getCar(carId);
+  const cont=document.getElementById('parts-manager-list');
+  cont.innerHTML='<div class="cat-grid">'+car.parts.map(p=>`
+    <div class="cat-chip">
+      <span style="font-size:12px">${p}</span>
+      <button class="cat-rm" onclick="removePartManager('${carId}','${p.replace(/'/g,"\\'")}')">✕</button>
+    </div>`).join('')+'</div>';
+}
+
+function addPartFromManager(){
+  const inp=document.getElementById('pm-inp');
+  const label=inp.value.trim();
+  if(!label)return;
+  const car=getCar(_pmCarId);
+  if(!car.parts.includes(label)){
+    car.parts.push(label);
+    save();
+    refreshPartsFilter(_pmCarId);
+    showToast('✅ הרכיב נוסף');
+  }
+  inp.value='';
+  renderPartsManager(_pmCarId);
+}
+
+function removePartManager(carId,part){
+  const car=getCar(Number(carId)||carId);
+  const inUse=car.entries.some(e=>e.parts&&e.parts.includes(part));
+  if(inUse&&!confirm(`הרכיב "${part}" בשימוש בטיפולים קיימים. למחוק בכל זאת?`))return;
+  car.parts=car.parts.filter(p=>p!==part);
+  save();
+  refreshPartsFilter(_pmCarId);
+  renderPartsManager(_pmCarId);
+}
+
+/* ── ENTRIES ── */
+let _edit={carId:null,idx:null};
+
+function openAddEntry(carId){
+  _edit={carId,idx:null};
+  _modalCarId=carId;
+  document.getElementById('me-title').textContent='הוסף טיפול';
+  document.getElementById('e-date').value=new Date().toISOString().slice(0,10);
+  ['e-desc','e-km','e-cost','e-notes','e-garage'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('e-status').value='done';
+  document.getElementById('e-next').value='';
+  buildChecklist(carId,[]);
+  document.getElementById('modal-entry').classList.add('open');
+  setTimeout(()=>document.getElementById('e-desc').focus(),150);
+}
+
+function openEditEntry(carId,idx){
+  _edit={carId,idx};
+  _modalCarId=carId;
+  const e=getCar(carId).entries[idx];
+  document.getElementById('me-title').textContent='עדכן טיפול';
+  document.getElementById('e-date').value=e.date||'';
+  document.getElementById('e-desc').value=e.desc||'';
+  document.getElementById('e-km').value=e.km||'';
+  document.getElementById('e-cost').value=e.cost||'';
+  document.getElementById('e-status').value=e.status||'done';
+  document.getElementById('e-next').value=e.next||'';
+  document.getElementById('e-notes').value=e.notes||'';
+  document.getElementById('e-garage').value=e.garage||'';
+  buildChecklist(carId,e.parts||[]);
+  document.getElementById('modal-entry').classList.add('open');
+}
+
+function saveEntry(){
+  const{carId,idx}=_edit;
+  const car=getCar(carId);
+  const entry={
+    date:document.getElementById('e-date').value,
+    desc:document.getElementById('e-desc').value.trim(),
+    km:document.getElementById('e-km').value,
+    cost:document.getElementById('e-cost').value,
+    status:document.getElementById('e-status').value,
+    next:document.getElementById('e-next').value,
+    notes:document.getElementById('e-notes').value.trim(),
+    garage:document.getElementById('e-garage').value.trim(),
+    parts:getCheckedParts()
+  };
+  if(idx===null) car.entries.push(entry);
+  else car.entries[idx]=entry;
+  car.entries.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  closeModal('modal-entry');
+  renderAll(carId);save();
+  showToast('✅ הטיפול נשמר');
+}
+
+function delEntry(carId,idx){
+  if(!confirm('למחוק את הטיפול?'))return;
+  getCar(carId).entries.splice(idx,1);
+  renderAll(carId);save();
+  showToast('🗑 הטיפול נמחק');
+}
+
+/* ── CAR EDIT ── */
+let _ecid=null;
+function openCarEdit(carId){
+  _ecid=carId;
+  const car=getCar(carId);
+  document.getElementById('ce-name').value=car.name||'';
+  document.getElementById('ce-model').value=car.model||'';
+  document.getElementById('ce-year').value=car.year||'';
+  document.getElementById('ce-plate').value=car.plate||'';
+  document.getElementById('ce-engine').value=car.engine||'';
+  document.getElementById('modal-car').classList.add('open');
+}
+
+function saveCarEdit(){
+  const car=getCar(_ecid);
+  car.name=document.getElementById('ce-name').value.trim()||car.name;
+  car.model=document.getElementById('ce-model').value.trim();
+  car.year=document.getElementById('ce-year').value.trim();
+  car.plate=document.getElementById('ce-plate').value.trim();
+  car.engine=document.getElementById('ce-engine').value.trim();
+  updateCarMeta(_ecid);rebuildTabs();
+  closeModal('modal-car');save();
+  showToast('✅ פרטי הרכב עודכנו');
+}
+
+/* ── REMINDERS ── */
+function openReminders(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const all=[];
+  state.cars.forEach(car=>{
+    car.entries.forEach(e=>{
+      if(!e.next)return;
+      const d=new Date(e.next);d.setHours(0,0,0,0);
+      const days=Math.round((d-today)/86400000);
+      const label=e.parts&&e.parts.length?e.parts.slice(0,3).join(', '):(e.desc||'טיפול');
+      all.push({car:car.name,plate:car.plate,label,desc:e.desc,next:e.next,days,parts:e.parts||[]});
+    });
+  });
+  all.sort((a,b)=>a.days-b.days);
+  const cont=document.getElementById('reminders-content');
+  if(!all.length){
+    cont.innerHTML=`<div style="text-align:center;padding:40px;color:var(--ink4)"><div style="font-size:36px;margin-bottom:12px;opacity:.4">📅</div><p>אין תזכורות מוגדרות.</p><p style="font-size:12px;margin-top:6px">הוסף "תאריך טיפול הבא" בטיפולים.</p></div>`;
+  } else {
+    cont.innerHTML=all.map(r=>{
+      const cls=r.days<0?'dp-urgent':r.days<=14?'dp-warning':'dp-ok';
+      const txt=r.days<0?`איחור ${Math.abs(r.days)} י'`:r.days===0?'היום!':`עוד ${r.days} י'`;
+      return `<div class="reminder-row">
+        <div>
+          <div class="r-car">🚗 ${r.car}${r.plate?' · '+r.plate:''}</div>
+          <div class="r-name">${r.label}</div>
+          ${r.desc?`<div class="r-desc">${r.desc}</div>`:''}
+        </div>
+        <div class="r-meta">
+          <span class="r-date">${r.next}</span>
+          <span class="days-pill ${cls}">${txt}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('modal-reminders').classList.add('open');
+}
+
+function copyReminders(){
+  const today=new Date();today.setHours(0,0,0,0);
+  const lines=['📋 תזכורות תחזוקת רכבים — '+new Date().toLocaleDateString('he-IL'),''];
+  state.cars.forEach(car=>{
+    const rel=car.entries.filter(e=>e.next).map(e=>{
+      const d=new Date(e.next);d.setHours(0,0,0,0);
+      const days=Math.round((d-today)/86400000);
+      return{...e,days};
+    }).sort((a,b)=>a.days-b.days);
+    if(!rel.length)return;
+    lines.push(`🚗 ${car.name}${car.plate?' ('+car.plate+')':''}`);
+    rel.forEach(e=>{
+      const icon=e.days<0?'🔴':e.days<=14?'🟡':'🟢';
+      const dt=e.days<0?`איחור ${Math.abs(e.days)} ימים`:`בעוד ${e.days} ימים`;
+      const pLabel=e.parts&&e.parts.length?e.parts.join(', '):(e.desc||'טיפול');
+      lines.push(`  ${icon} ${pLabel} — ${e.next} (${dt})`);
+    });
+    lines.push('');
+  });
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>showToast('📋 הועתק ללוח!'));
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV(){
+  const BOM='\uFEFF';
+  let csv=BOM+'רכב,לוחית,תאריך,רכיבים שהוחלפו,תיאור,מוסך,קילומטראז,עלות,סטטוס,תאריך הבא,הערות\n';
+  state.cars.forEach(car=>{
+    car.entries.forEach(e=>{
+      const row=[car.name,car.plate||'',e.date||'',(e.parts||[]).join(' | '),e.desc||'',e.garage||'',e.km||'',e.cost||'',
+        e.status==='done'?'בוצע':'מתוכנן',e.next||'',e.notes||'']
+        .map(v=>`"${String(v).replace(/"/g,'""')}"`);
+      csv+=row.join(',')+'\n';
+    });
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='autocare_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('📥 הקובץ הורד');
+}
+
+/* ── UTILS ── */
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+document.querySelectorAll('.modal-bg').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')});
+});
+
+init();
+</script>
+</body>
+</html>
