@@ -374,6 +374,25 @@ tbody tr:hover td{background:var(--w50)}
       <div class="fg"><label>תאריך טיפול הבא</label><input type="date" id="e-next"></div>
       <div class="fg"><label>מוסך / ספק</label><input type="text" id="e-garage" placeholder="מוסך רמי, דלק פלוס..."></div>
       <div class="fg full"><label>הערות</label><textarea id="e-notes" placeholder="הערות נוספות, מספר חלק, ערבויות..."></textarea></div>
+
+      <!-- REMINDER CONTACT -->
+      <div class="fg full" id="e-reminder-wrap" style="background:var(--w50);border-radius:var(--r12);padding:14px;border:1.5px solid var(--w100)">
+        <label style="display:flex;align-items:center;gap:6px">
+          📲 תזכורת וואטסאפ לטיפול הבא
+          <span style="font-size:11px;color:var(--ink4);font-weight:400;text-transform:none;letter-spacing:0">(ישלח אוטומטית לאיש הקשר שתבחר)</span>
+        </label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <select id="e-reminder-contact" style="flex:1;min-width:180px;padding:9px 12px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--white);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none">
+            <option value="">ללא תזכורת</option>
+          </select>
+          <select id="e-reminder-days" style="padding:9px 12px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--white);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none">
+            <option value="7">7 ימים לפני</option>
+            <option value="14" selected>14 ימים לפני</option>
+            <option value="30">30 ימים לפני</option>
+          </select>
+        </div>
+        <p id="e-reminder-status" style="font-size:12px;color:var(--green);margin-top:8px;display:none"></p>
+      </div>
       <div class="fg full">
         <label>📷 תמונת קבלה</label>
         <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
@@ -420,6 +439,13 @@ tbody tr:hover td{background:var(--w50)}
       <div class="fg"><label>סוג דלק / מנוע</label><input type="text" id="ce-engine" placeholder="2.0 בנזין / היברידי"></div>
       <div class="fg"><label>📅 תאריך טסט שנתי הבא</label><input type="date" id="ce-test-date"></div>
       <div class="fg"><label>📱 מספר טלפון (לתזכורות)</label><input type="tel" id="ce-phone" placeholder="050-1234567" style="direction:ltr"></div>
+      <div class="fg full">
+        <label>📲 איש קשר ברירת מחדל לתזכורות</label>
+        <select id="ce-default-contact" style="padding:9px 12px;border-radius:var(--r8);border:1.5px solid var(--w100);background:var(--w50);color:var(--ink);font-size:13px;font-family:'Rubik',sans-serif;outline:none">
+          <option value="">ללא ברירת מחדל</option>
+        </select>
+        <p style="font-size:11px;color:var(--ink4);margin-top:5px">יוצג כברירת מחדל בעת הוספת טיפול לרכב זה</p>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('modal-car')">ביטול</button>
@@ -1050,6 +1076,21 @@ function removePartManager(carId,part){
 /* ── ENTRIES ── */
 let _edit={carId:null,idx:null};
 
+function populateReminderContactSel(carId, selectedNumber){
+  const sel=document.getElementById('e-reminder-contact');
+  const contacts=getWaContacts();
+  sel.innerHTML='<option value="">ללא תזכורת</option>'+
+    contacts.map(c=>`<option value="${c.number}"${c.number===selectedNumber?' selected':''}>${c.name}</option>`).join('');
+  // Show status if already has reminder
+  const status=document.getElementById('e-reminder-status');
+  if(selectedNumber){
+    const contact=contacts.find(c=>c.number===selectedNumber);
+    if(contact){status.textContent=`✅ תזכורת תישלח ל${contact.name}`;status.style.display='block';}
+  } else {
+    status.style.display='none';
+  }
+}
+
 function openAddEntry(carId){
   _edit={carId,idx:null};
   _modalCarId=carId;
@@ -1062,6 +1103,9 @@ function openAddEntry(carId){
   document.getElementById('e-receipt-preview').innerHTML='📷';
   document.getElementById('e-receipt-clear').style.display='none';
   document.getElementById('e-receipt-file').value='';
+  // Default to car's default contact
+  const car=getCar(carId);
+  populateReminderContactSel(carId, car.defaultContact||'');
   buildChecklist(carId,[]);
   document.getElementById('modal-entry').classList.add('open');
   setTimeout(()=>document.getElementById('e-desc').focus(),150);
@@ -1090,6 +1134,7 @@ function openEditEntry(carId,idx){
     document.getElementById('e-receipt-clear').style.display='none';
   }
   document.getElementById('e-receipt-file').value='';
+  populateReminderContactSel(carId, e.reminderContact||'');
   buildChecklist(carId,e.parts||[]);
   document.getElementById('modal-entry').classList.add('open');
 }
@@ -1097,6 +1142,8 @@ function openEditEntry(carId,idx){
 function saveEntry(){
   const{carId,idx}=_edit;
   const car=getCar(carId);
+  const reminderContact=document.getElementById('e-reminder-contact').value;
+  const reminderDays=parseInt(document.getElementById('e-reminder-days').value||'14');
   const entry={
     date:document.getElementById('e-date').value,
     desc:document.getElementById('e-desc').value.trim(),
@@ -1107,14 +1154,54 @@ function saveEntry(){
     notes:document.getElementById('e-notes').value.trim(),
     garage:document.getElementById('e-garage').value.trim(),
     parts:getCheckedParts(),
-    receipt:_receiptBase64||null
+    receipt:_receiptBase64||null,
+    reminderContact,
+    reminderDays
   };
   if(idx===null) car.entries.push(entry);
   else car.entries[idx]=entry;
   car.entries.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   closeModal('modal-entry');
   renderAll(carId);save();
-  showToast('✅ הטיפול נשמר');
+
+  // Auto-schedule to bot if contact chosen and next date set
+  if(reminderContact && entry.next){
+    scheduleEntryReminder(car, entry, reminderContact, reminderDays);
+  }
+  showToast(reminderContact&&entry.next ? '✅ הטיפול נשמר + תזכורת נוצרה בבוט' : '✅ הטיפול נשמר');
+}
+
+async function scheduleEntryReminder(car, entry, contactNumber, daysBefore){
+  try{
+    const d=new Date(entry.next);
+    const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
+    const msg=buildServiceMsg(car, entry, daysBefore);
+    const lbl=entry.parts&&entry.parts.length?entry.parts.slice(0,2).join(', '):(entry.desc||'טיפול');
+    const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
+    const botData=await fetch(WA_BOT+'/api/data').then(r=>r.json()).catch(()=>({contacts:[],schedules:[]}));
+    // Remove old schedule for this entry if exists
+    const filtered=botData.schedules.filter(s=>s.id!==entry.scheduleId);
+    const scheduleId='ac_'+car.id+'_'+Date.now();
+    // Save schedule ID back to entry
+    entry.scheduleId=scheduleId;
+    filtered.push({
+      id:scheduleId,
+      name:`AutoCare: ${car.name} — ${lbl}`,
+      message:msg,
+      phones:[contactNumber],
+      specificDate:dateStr,
+      hour:9, minute:0,
+      yearly:true,
+      active:true,
+      lastWorkDay:false
+    });
+    await fetch(WA_BOT+'/api/data',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contacts:botData.contacts, schedules:filtered})
+    });
+    // Update state with scheduleId and save
+    save();
+  }catch(e){ console.error('Schedule error:',e); }
 }
 
 function delEntry(carId,idx){
@@ -1177,6 +1264,11 @@ function openCarEdit(carId){
   document.getElementById('ce-engine').value=car.engine||'';
   document.getElementById('ce-test-date').value=car.testDate||'';
   document.getElementById('ce-phone').value=car.phone||'';
+  // Populate default contact select
+  const sel=document.getElementById('ce-default-contact');
+  const contacts=getWaContacts();
+  sel.innerHTML='<option value="">ללא ברירת מחדל</option>'+
+    contacts.map(c=>`<option value="${c.number}"${c.number===car.defaultContact?' selected':''}>${c.name} (${c.number})</option>`).join('');
   document.getElementById('modal-car').classList.add('open');
 }
 
@@ -1189,6 +1281,7 @@ function saveCarEdit(){
   car.engine=document.getElementById('ce-engine').value.trim();
   car.testDate=document.getElementById('ce-test-date').value;
   car.phone=document.getElementById('ce-phone').value.trim();
+  car.defaultContact=document.getElementById('ce-default-contact').value;
   updateCarMeta(_ecid);rebuildTabs();
   closeModal('modal-car');save();
   showToast('✅ פרטי הרכב עודכנו');
@@ -1553,35 +1646,46 @@ async function sendWaNow(){
 
 function buildSchedulePreview(){
   const daysBefore=parseInt(document.querySelector('input[name="wa-days-before"]:checked')?.value||7);
+  const allContacts=getWaContacts();
   const lines=[];
   state.cars.forEach(car=>{
+    const carContact=car.defaultContact
+      ?allContacts.find(c=>c.number===car.defaultContact)?.name||car.defaultContact
+      :'<span style="color:var(--amber)">⚠️ לא הוגדר — ישלח לכולם</span>';
     car.entries.filter(e=>e.next).forEach(e=>{
       const d=new Date(e.next);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
       const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
-      lines.push(`🔧 <strong>${car.name}</strong> — ${lbl}<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (${daysBefore} ימים לפני ${e.next}) · חוזר כל שנה</span>`);
+      const entryContact=e.reminderContact
+        ?allContacts.find(c=>c.number===e.reminderContact)?.name||e.reminderContact
+        :null;
+      const toDisplay=entryContact?`👤 ${entryContact}`:carContact;
+      lines.push(`🔧 <strong>${car.name}</strong> — ${lbl} → ${toDisplay}<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (${daysBefore} ימים לפני ${e.next}) · חוזר כל שנה</span>`);
     });
     if(car.testDate){
       const d=new Date(car.testDate);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-14);
-      lines.push(`🔍 <strong>${car.name}</strong> — טסט שנתי<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (14 ימים לפני ${car.testDate}) · חוזר כל שנה</span><br><span style="font-size:11px;color:var(--amber)">⚠️ הודעת הטסט תמיד נשלחת 14 ימים לפני — ללא תלות בהגדרה למעלה</span>`);
+      lines.push(`🔍 <strong>${car.name}</strong> — טסט שנתי → ${carContact}<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (14 ימים לפני ${car.testDate}) · חוזר כל שנה</span>`);
     }
   });
   const prev=document.getElementById('wa-schedule-preview');
   prev.innerHTML=lines.length
     ?lines.map(l=>`<div style="padding:8px 0;border-bottom:1px solid var(--w100)">${l}</div>`).join('')
     :'<span style="color:var(--ink4)">אין טיפולים עם תאריך הבא או תאריך טסט מוגדר</span>';
+  // Tip
+  if(state.cars.some(c=>!c.defaultContact)){
+    prev.insertAdjacentHTML('afterbegin','<div style="padding:8px;background:var(--amber-lt);border-radius:var(--r8);margin-bottom:10px;font-size:12px;color:var(--amber)">💡 הגדר "איש קשר ברירת מחדל" לכל רכב בלחיצה על "ערוך פרטים"</div>');
+  }
 }
 
 async function createAutoSchedules(){
-  const contacts=getWaContacts();
-  if(!contacts.length){document.getElementById('wa-auto-result').innerHTML='<div class="wa-err wa-result">הוסף אנשי קשר תחילה בלשונית "אנשי קשר"</div>';return;}
+  const allContacts=getWaContacts();
+  if(!allContacts.length){document.getElementById('wa-auto-result').innerHTML='<div class="wa-err wa-result">הוסף אנשי קשר תחילה בלשונית "אנשי קשר"</div>';return;}
   const daysBefore=parseInt(document.querySelector('input[name="wa-days-before"]:checked')?.value||7);
   const sendTime=document.getElementById('wa-send-time').value||'09:00';
   const [hour,minute]=sendTime.split(':').map(Number);
   const resEl=document.getElementById('wa-auto-result');
   resEl.innerHTML='<div class="wa-ok wa-result">⏳ טוען נתונים מהבוט...</div>';
-  const phones=contacts.map(c=>c.number);
 
   // Load existing data from bot
   let botData={contacts:[],schedules:[]};
@@ -1595,18 +1699,32 @@ async function createAutoSchedules(){
 
   let created=0;
   const newSchedules=[...botData.schedules];
+  const warnings=[];
 
   for(const car of state.cars){
-    // Maintenance reminders
+    // Determine phones for this car
+    // 1. Per-entry contact, 2. Car default contact, 3. All contacts as fallback
+    const carDefaultContact=car.defaultContact;
+    const carPhones=carDefaultContact?[carDefaultContact]:allContacts.map(c=>c.number);
+    if(!carDefaultContact){
+      warnings.push(`⚠️ לרכב "${car.name}" אין איש קשר ברירת מחדל — ישלח לכולם`);
+    }
+
+    // Maintenance reminders — use per-entry contact if set, else car default
     for(const e of car.entries.filter(ev=>ev.next)){
+      const phones=e.reminderContact?[e.reminderContact]:carPhones;
       const d=new Date(e.next);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
       const msg=buildServiceMsg(car, e, daysBefore);
       const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
       const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
+      // Find contact name for display
+      const contactName=e.reminderContact
+        ?allContacts.find(c=>c.number===e.reminderContact)?.name||e.reminderContact
+        :carDefaultContact?allContacts.find(c=>c.number===carDefaultContact)?.name||'ברירת מחדל':'כולם';
       newSchedules.push({
-        id:'ac_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-        name:`AutoCare: ${car.name} — ${lbl}`,
+        id:e.scheduleId||('ac_'+car.id+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,4)),
+        name:`AutoCare: ${car.name} — ${lbl} → ${contactName}`,
         message:msg,
         phones,
         specificDate:dateStr,
@@ -1617,17 +1735,18 @@ async function createAutoSchedules(){
       });
       created++;
     }
-    // Test reminder — separate message 14 days before
+
+    // Test reminder — 14 days before, to car default contact
     if(car.testDate){
       const d=new Date(car.testDate);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-14);
       const msg=buildTestMsg(car, 14);
       const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
       newSchedules.push({
-        id:'ac_test_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+        id:'ac_test_'+car.id+'_'+Date.now(),
         name:`AutoCare: ${car.name} — טסט שנתי`,
         message:msg,
-        phones,
+        phones:carPhones,
         specificDate:dateStr,
         hour,minute,
         yearly:true,
@@ -1640,7 +1759,6 @@ async function createAutoSchedules(){
 
   if(!created){resEl.innerHTML='<div class="wa-err wa-result">אין טיפולים עם תאריך הבא או תאריך טסט</div>';return;}
 
-  // Save back to bot
   try{
     const r=await fetch(WA_BOT+'/api/data',{
       method:'POST',
@@ -1648,12 +1766,13 @@ async function createAutoSchedules(){
       body:JSON.stringify({contacts:botData.contacts, schedules:newSchedules})
     });
     if(r.ok){
-      resEl.innerHTML=`<div class="wa-ok wa-result">✅ נוצרו ${created} תיזמונים בבוט! ישלחו אוטומטית כל שנה ${daysBefore} ימים לפני כל טיפול וטסט.</div>`;
+      const warnHtml=warnings.length?`<br><small style="opacity:.8">${warnings.join('<br>')}</small>`:'';
+      resEl.innerHTML=`<div class="wa-ok wa-result">✅ נוצרו ${created} תיזמונים — כל רכב לאיש הקשר שלו!${warnHtml}</div>`;
     } else {
       resEl.innerHTML='<div class="wa-err wa-result">❌ שגיאה בשמירה לבוט</div>';
     }
   }catch(e){
-    resEl.innerHTML='<div class="wa-err wa-result">❌ שגיאת רשת — ודא שהבוט פעיל</div>';
+    resEl.innerHTML='<div class="wa-err wa-result">❌ שגיאת רשת</div>';
   }
 }
 
