@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AutoCare — תחזוקת רכבים</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚗</text></svg>">
+<meta name="theme-color" content="#1c1917">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AutoCare">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1388,39 +1393,85 @@ function waTab(tab){
   if(tab==='send') renderSendContacts();
 }
 
+function buildServiceMsg(car, entry, daysBefore){
+  const lbl = entry.parts&&entry.parts.length ? entry.parts.join(', ') : (entry.desc||'טיפול תקופתי');
+  const km = entry.km ? `\n📍 *קילומטראז' אחרון:* ${Number(entry.km).toLocaleString()} ק"מ` : '';
+  const garage = entry.garage ? `\n🏠 *מוסך:* ${entry.garage}` : '';
+  const cost = entry.cost ? `\n💰 *עלות משוערת:* ${Number(entry.cost).toLocaleString()} ₪` : '';
+  return (
+    `🚗 *תזכורת טיפול רכב — ${car.name}*\n` +
+    `━━━━━━━━━━━━━━━━\n\n` +
+    `שלום! 👋\n` +
+    `מגיע מועד הטיפול לרכבך בעוד *${daysBefore} ימים*.\n\n` +
+    `🔧 *סוג הטיפול:*\n${lbl}\n\n` +
+    `📅 *תאריך מתוכנן:* ${entry.next}` +
+    (car.plate ? `\n🔖 *לוחית רישוי:* ${car.plate}` : '') +
+    km + garage + cost +
+    `\n\n✅ מומלץ לקבוע תור למוסך בהקדם.\n\n` +
+    `_AutoCare — מערכת ניהול תחזוקת רכבים_`
+  );
+}
+
+function buildTestMsg(car, daysBefore){
+  return (
+    `🔍 *תזכורת טסט שנתי — ${car.name}*\n` +
+    `━━━━━━━━━━━━━━━━\n\n` +
+    `שלום! 👋\n` +
+    `הטסט השנתי לרכבך מתקרב — נותרו *${daysBefore} ימים*.\n\n` +
+    `📅 *תאריך הטסט:* ${car.testDate}` +
+    (car.plate ? `\n🔖 *לוחית רישוי:* ${car.plate}` : '') +
+    (car.model ? `\n🚗 *דגם:* ${car.model}` : '') +
+    `\n\n📋 *לפני הטסט — כדאי לבדוק:*\n` +
+    `• לחץ אוויר בצמיגים\n` +
+    `• נוזל שמשה ומגבים\n` +
+    `• נורות ואורות\n` +
+    `• בלמים\n\n` +
+    `✅ קבע תור לטסט בהקדם לפני התאריך!\n\n` +
+    `_AutoCare — מערכת ניהול תחזוקת רכבים_`
+  );
+}
+
 function openWaModal(){
   waTab('send');
-  // Build message
   const today=new Date();today.setHours(0,0,0,0);
-  const lines=['🔧 *תזכורות תחזוקת רכבים*','📅 '+new Date().toLocaleDateString('he-IL'),''];
+  const lines=[
+    `🔧 *סיכום תחזוקה — AutoCare*`,
+    `━━━━━━━━━━━━━━━━`,
+    `📅 ${new Date().toLocaleDateString('he-IL')}`,
+    ``
+  ];
   let hasAny=false;
   state.cars.forEach(car=>{
     const items=[];
     car.entries.filter(e=>e.next).forEach(e=>{
       const d=new Date(e.next);d.setHours(0,0,0,0);
       const days=Math.round((d-today)/86400000);
-      if(days>30)return;
-      const icon=days<0?'🔴':days<=7?'🟡':'🟢';
-      const dt=days<0?`איחור ${Math.abs(days)} י'`:days===0?'היום!':`עוד ${days} י'`;
-      const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
-      items.push(`  ${icon} ${lbl} — ${e.next} (${dt})`);
+      if(days>60)return;
+      const icon=days<0?'🔴':days<=7?'🟠':'🟢';
+      const status=days<0?`⚠️ איחור של ${Math.abs(days)} ימים!`:days===0?'📌 היום!':days<=14?`⏳ עוד ${days} ימים`:`✅ עוד ${days} ימים`;
+      const lbl=e.parts&&e.parts.length?e.parts.join(', '):(e.desc||'טיפול');
+      items.push(`  ${icon} *${lbl}*\n     ${status} · ${e.next}`);
     });
     if(car.testDate){
       const d=new Date(car.testDate);d.setHours(0,0,0,0);
       const days=Math.round((d-today)/86400000);
       if(days<=60){
-        const icon=days<0?'🔴':days<=14?'🟡':'🟢';
-        const dt=days<0?`איחור ${Math.abs(days)} י'`:days===0?'היום!':`עוד ${days} י'`;
-        items.push(`  ${icon} 🔍 טסט שנתי — ${car.testDate} (${dt})`);
+        const icon=days<0?'🔴':days<=14?'🟠':'🔵';
+        const status=days<0?`⚠️ עבר! (לפני ${Math.abs(days)} ימים)`:days===0?'📌 היום!':days<=14?`⏳ עוד ${days} ימים`:`✅ עוד ${days} ימים`;
+        items.push(`  ${icon} *טסט שנתי*\n     ${status} · ${car.testDate}`);
       }
     }
     if(!items.length)return;
     hasAny=true;
-    lines.push(`🚗 *${car.name}*${car.plate?' ('+car.plate+')':''}`);
+    lines.push(`🚗 *${car.name}*${car.plate?' — '+car.plate:''}`);
     lines.push(...items);
     lines.push('');
   });
-  if(!hasAny) lines.push('✅ אין טיפולים קרובים ב-60 הימים הקרובים');
+  if(!hasAny){
+    lines.push('✅ *הכל בסדר!*');
+    lines.push('אין טיפולים קרובים ב-60 הימים הקרובים.');
+  }
+  lines.push(`_AutoCare — מערכת ניהול תחזוקת רכבים_`);
   document.getElementById('wa-msg').value=lines.join('\n');
   document.getElementById('wa-result').innerHTML='';
   document.getElementById('modal-wa').classList.add('open');
@@ -1504,24 +1555,22 @@ function buildSchedulePreview(){
   const daysBefore=parseInt(document.querySelector('input[name="wa-days-before"]:checked')?.value||7);
   const lines=[];
   state.cars.forEach(car=>{
-    // Maintenance reminders — yearly based on "next date"
     car.entries.filter(e=>e.next).forEach(e=>{
       const d=new Date(e.next);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
       const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
-      lines.push(`🔧 <strong>${car.name}</strong> — ${lbl}<br><span style="color:var(--ink4);font-size:11px">יישלח ב: ${sendDate.toLocaleDateString('he-IL')} (${daysBefore} ימים לפני ${e.next}) · חוזר כל שנה</span>`);
+      lines.push(`🔧 <strong>${car.name}</strong> — ${lbl}<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (${daysBefore} ימים לפני ${e.next}) · חוזר כל שנה</span>`);
     });
-    // Test reminder
     if(car.testDate){
       const d=new Date(car.testDate);
-      const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
-      lines.push(`🔍 <strong>${car.name}</strong> — טסט שנתי<br><span style="color:var(--ink4);font-size:11px">יישלח ב: ${sendDate.toLocaleDateString('he-IL')} (${daysBefore} ימים לפני ${car.testDate}) · חוזר כל שנה</span>`);
+      const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-14);
+      lines.push(`🔍 <strong>${car.name}</strong> — טסט שנתי<br><span style="color:var(--ink4);font-size:11px">📅 ישלח: ${sendDate.toLocaleDateString('he-IL')} (14 ימים לפני ${car.testDate}) · חוזר כל שנה</span><br><span style="font-size:11px;color:var(--amber)">⚠️ הודעת הטסט תמיד נשלחת 14 ימים לפני — ללא תלות בהגדרה למעלה</span>`);
     }
   });
   const prev=document.getElementById('wa-schedule-preview');
   prev.innerHTML=lines.length
-    ?lines.map(l=>`<div style="padding:6px 0;border-bottom:1px solid var(--w100)">${l}</div>`).join('')
-    :'<span style="color:var(--ink4)">אין טיפולים עם תאריך הבא או תאריך טסט להגדרה</span>';
+    ?lines.map(l=>`<div style="padding:8px 0;border-bottom:1px solid var(--w100)">${l}</div>`).join('')
+    :'<span style="color:var(--ink4)">אין טיפולים עם תאריך הבא או תאריך טסט מוגדר</span>';
 }
 
 async function createAutoSchedules(){
@@ -1552,8 +1601,8 @@ async function createAutoSchedules(){
     for(const e of car.entries.filter(ev=>ev.next)){
       const d=new Date(e.next);
       const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
+      const msg=buildServiceMsg(car, e, daysBefore);
       const lbl=e.parts&&e.parts.length?e.parts.slice(0,2).join(', '):(e.desc||'טיפול');
-      const msg=`🔧 *תזכורת תחזוקה — ${car.name}*\n\nמועד טיפול: ${e.next}\nסוג: ${lbl}${car.plate?'\nלוחית: '+car.plate:''}\n\n_נשלח אוטומטית מ-AutoCare_`;
       const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
       newSchedules.push({
         id:'ac_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
@@ -1568,11 +1617,11 @@ async function createAutoSchedules(){
       });
       created++;
     }
-    // Test reminder
+    // Test reminder — separate message 14 days before
     if(car.testDate){
       const d=new Date(car.testDate);
-      const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-daysBefore);
-      const msg=`🔍 *תזכורת טסט שנתי — ${car.name}*\n\nתאריך טסט: ${car.testDate}${car.plate?'\nלוחית: '+car.plate:''}\n\nזכור לקבוע תור לטסט!\n\n_נשלח אוטומטית מ-AutoCare_`;
+      const sendDate=new Date(d);sendDate.setDate(sendDate.getDate()-14);
+      const msg=buildTestMsg(car, 14);
       const dateStr=`${sendDate.getFullYear()}-${String(sendDate.getMonth()+1).padStart(2,'0')}-${String(sendDate.getDate()).padStart(2,'0')}`;
       newSchedules.push({
         id:'ac_test_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
