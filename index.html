@@ -1679,7 +1679,7 @@ async function sendWaNow(){
   let sent=0,failed=0;
   for(const cb of selected){
     try{
-      const r=await fetch(WA_BOT+'/api/send',{
+      const r=await fetch(WA_BOT+'/api/autocare/send',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({phone:cb.value, message:msg})
