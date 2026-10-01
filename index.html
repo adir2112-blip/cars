@@ -346,6 +346,9 @@ tbody tr:hover td{background:var(--w50)}
       <button class="btn btn-green btn-sm" onclick="openReminders()">📅 תזכורות</button>
       <button class="btn btn-sm" style="background:#25D36622;border-color:#25D36644;color:#15803d" onclick="openWaModal()">📲 וואטסאפ</button>
       <button class="btn btn-sm" onclick="exportCSV()">⬇ Excel</button>
+      <button class="btn btn-sm" onclick="exportJSON()" title="הורדת גיבוי מלא">💾 גיבוי</button>
+      <button class="btn btn-sm" onclick="document.getElementById('import-json').click()" title="שחזור מקובץ גיבוי">♻️ שחזור</button>
+      <input type="file" id="import-json" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
     </div>
   </div>
 </header>
@@ -623,9 +626,6 @@ tbody tr:hover td{background:var(--w50)}
 </footer>
 
 <script>
-const SUPA_URL = 'https://gegzxcbkpmcsvldypgms.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdlZ3p4Y2JrcG1jc3ZsZHlwZ21zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1MTQxMjksImV4cCI6MjA5NDA5MDEyOX0.gDVK7ClL5AsPCQQ8VrdBPzqVhe1c1idqEyTkhYaJBZE';
-const SUPA_HEADERS = {'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY};
 
 const DEFAULT_PARTS = [
   'שמן מנוע','פילטר שמן','פילטר אוויר','פלאגים',
@@ -640,38 +640,63 @@ let state = {
   activeCar:0
 };
 
+/* ── STORAGE ──
+   הנתונים נשמרים בשרת הבוט ב-Railway (MongoDB) — שרת שפועל תמיד ולא נרדם.
+   כללי בטיחות נגד מחיקה:
+   1. כל שמירה נכתבת קודם ל-localStorage (תמיד).
+   2. אם הטעינה מהשרת נכשלה — לא שולחים לשרת כלום, כדי לא לדרוס נתונים אמיתיים במצב ריק.
+   3. אם העותק המקומי חדש יותר מזה שבשרת — משתמשים בו ומעלים אותו.
+   4. השרת מסרב לדרוס נתונים קיימים במצב ריק, ושומר היסטוריה (הוספה בלבד). */
+const AC_API='https://whatsapp-bot-production-120a.up.railway.app/api/autocare';
+const LS_KEY='autocare_backup';
+let _cloudOk=false;
+
+function hasData(s){return !!(s&&s.cars&&s.cars.some(c=>(c.entries||[]).length||c.plate||c.model||c.testDate))}
+function readLocal(){try{const b=localStorage.getItem(LS_KEY);return b?JSON.parse(b):null}catch(_){return null}}
+function writeLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(state))}catch(_){}}
+
+async function pushCloud(force){
+  const r=await fetch(AC_API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({data:state,force:!!force})
+  });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+}
+
 let _saveTimer=null;
-function save(){
+function save(force){
+  state.savedAt=new Date().toISOString();
+  writeLocal();
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
-    try{
-      await fetch(SUPA_URL+'/rest/v1/ac_state',{
-        method:'POST',
-        headers:{...SUPA_HEADERS,'Prefer':'resolution=merge-duplicates'},
-        body:JSON.stringify({id:'main',data:state,updated_at:new Date().toISOString()})
-      });
-    }catch(e){
-      try{localStorage.setItem('autocare_backup',JSON.stringify(state))}catch(_){}
-    }
+    if(!_cloudOk){showSyncBadge('נשמר מקומית בלבד ⚠️');return}
+    try{await pushCloud(force);showSyncBadge('מסונכרן ☁️')}
+    catch(e){showSyncBadge('נשמר מקומית בלבד ⚠️')}
   },800);
 }
 
 async function load(){
   showSyncBadge('טוען...');
+  const local=readLocal();
   try{
-    const r=await fetch(SUPA_URL+'/rest/v1/ac_state?id=eq.main&select=data',{headers:SUPA_HEADERS});
-    const rows=await r.json();
-    if(rows&&rows.length&&rows[0].data){
-      state=rows[0].data;
-      showSyncBadge('מסונכרן ☁️');
-    } else {
-      const backup=localStorage.getItem('autocare_backup');
-      if(backup) state=JSON.parse(backup);
-      showSyncBadge('');
+    const r=await fetch(AC_API);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const cloud=(await r.json()).data;
+    _cloudOk=true;
+    const localNewer=local&&hasData(local)&&(!cloud||!hasData(cloud)||(local.savedAt||'')>(cloud.savedAt||''));
+    if(localNewer){
+      state=local;
+      try{await pushCloud()}catch(_){}
+    } else if(cloud){
+      state=cloud;
+      writeLocal();
     }
+    showSyncBadge('מסונכרן ☁️');
   }catch(e){
-    try{const backup=localStorage.getItem('autocare_backup');if(backup)state=JSON.parse(backup);}catch(_){}
-    showSyncBadge('אין חיבור ⚠️');
+    _cloudOk=false;
+    if(local) state=local;
+    showSyncBadge('אין חיבור לשרת — נשמר מקומית ⚠️');
   }
 }
 
@@ -1366,6 +1391,29 @@ function exportCSV(){
   a.download='autocare_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   showToast('📥 הקובץ הורד');
+}
+
+function exportJSON(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
+  a.download='autocare_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  showToast('💾 קובץ הגיבוי הורד');
+}
+
+function importJSON(input){
+  const f=input.files&&input.files[0];input.value='';
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const s=JSON.parse(rd.result);
+      if(!s||!Array.isArray(s.cars)||!s.cars.length) throw 0;
+      if(!confirm('לשחזר מהגיבוי? הנתונים הנוכחיים יוחלפו.'))return;
+      state=s;state.activeCar=0;save(true);setTimeout(()=>location.reload(),1500);
+    }catch(_){showToast('⚠️ קובץ גיבוי לא תקין')}
+  };
+  rd.readAsText(f);
 }
 
 /* ── UTILS ── */
